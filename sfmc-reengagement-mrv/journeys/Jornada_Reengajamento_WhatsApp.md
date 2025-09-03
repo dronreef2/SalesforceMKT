@@ -19,27 +19,36 @@
 
 2.  **Envio de Mensagem WhatsApp (WhatsApp Message)**
     - **Canal:** WhatsApp
-    - **Conteúdo da Mensagem (com AMPScript):**
-      Este é o bloco de código completo para ser inserido no conteúdo HTML da mensagem no Journey Builder.
+    - **Conteúdo da Mensagem (Refatorado com AMPScript e Lookup):**
+      Este é o bloco de código completo e refatorado. Ele agora busca as configurações da `DE_MRV_Configuracao`.
+
+      **Nota de Engenharia:** Este bloco de código deve ser salvo como um **Code Snippet** no Content Builder (ex: com a chave `snippet_gerador_link_whatsapp`). Nas jornadas, em vez de colar o código todo, você inseriria apenas `%%=ContentBlockByKey("snippet_gerador_link_whatsapp")=%%`. Isso centraliza a lógica e facilita futuras manutenções.
+
       ```html
       %%[
       /*
         ================================================================
-        SCRIPT DE PERSONALIZAÇÃO PARA MENSAGEM DE WHATSAPP - REENGAGAMENTO MRV
+        SCRIPT REUTILIZÁVEL PARA LINK DE WHATSAPP (v2.0)
         ================================================================
-        Objetivo: Construir um link de WhatsApp seguro e rastreável.
+        Objetivo: Construir um link de WhatsApp seguro, rastreável e configurável
+        de forma centralizada via Data Extension.
       */
 
-      // --- CONFIGURAÇÃO ---
-      // IMPORTANTE: Substitua o número abaixo pelo da equipe de vendas MRV.
-      // Formato: Código do país + DDD + Número (tudo junto). Ex: 5511999998888
+      // --- VARIÁVEIS ---
       VAR @whatsapp_mrv, @mensagem_pre_preenchida, @mensagem_codificada, @link_whatsapp
 
-      SET @whatsapp_mrv = "5511999998888" // <<< SUBSTITUA ESTE NÚMERO
-
       // --- LÓGICA ---
-      // Mensagem que aparecerá pré-preenchida no WhatsApp do usuário.
-      SET @mensagem_pre_preenchida = "Olá, MRV! Gostaria de saber mais sobre os lançamentos."
+      // Busca os valores da DE de Configuração.
+      SET @whatsapp_mrv = Lookup("DE_MRV_Configuracao", "Valor", "Chave", "NumeroWhatsAppVendas")
+      SET @mensagem_pre_preenchida = Lookup("DE_MRV_Configuracao", "Valor", "Chave", "MensagemPadraoWhatsApp")
+
+      // Fallback: Se o lookup falhar, define valores padrão para evitar erros.
+      IF Empty(@whatsapp_mrv) THEN
+        SET @whatsapp_mrv = "5511000000000" // Número de fallback
+      ENDIF
+      IF Empty(@mensagem_pre_preenchida) THEN
+        SET @mensagem_pre_preenchida = "Olá!"
+      ENDIF
 
       // Codifica a mensagem para ser usada em uma URL.
       SET @mensagem_codificada = URLEncode(@mensagem_pre_preenchida, 1)
@@ -54,7 +63,7 @@
 
       <a href="%%=RedirectTo(@link_whatsapp)=%%" alias="whatsapp_reengagement_link" title="Falar com MRV no WhatsApp"><b>Clique aqui para falar com um de nossos consultores!</b></a>
       ```
-    - **Personalização:** O `%%Nome%%` é preenchido pela engine do Journey Builder. O link do WhatsApp é construído dinamicamente pelo AMPScript, que também garante o rastreamento de cliques através da função `RedirectTo()`.
+    - **Personalização:** O `%%Nome%%` é preenchido pelo Journey Builder. O link do WhatsApp é construído dinamicamente pelo AMPScript, que busca as configurações da `DE_MRV_Configuracao` e garante o rastreamento de cliques com `RedirectTo()`.
 
 3.  **Espera (Wait)**
     - **Duração:** 3 dias.
